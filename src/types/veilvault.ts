@@ -86,4 +86,9 @@ export interface FirebaseRuntimeConfig {
   authDomain: string;
   projectId: string;
   appId: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  measurementId?: string;
+  recaptchaSiteKey?: string;
 }
+

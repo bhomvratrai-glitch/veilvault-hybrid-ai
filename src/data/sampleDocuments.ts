@@ -67,3 +67,4 @@ FX Conversion Spread Fee Deducted by Intermediary: 6.8% ($1,360.00 undisclosed m
 Settlement Notice: Funds routed via unverified third-party intermediary wallet.`,
   },
 ];
+

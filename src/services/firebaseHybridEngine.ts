@@ -1,4 +1,6 @@
 import { deleteApp, getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
+import { getAnalytics, isSupported as isAnalyticsSupported } from 'firebase/analytics';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import {
   getAI,
   getGenerativeModel,
@@ -36,13 +38,27 @@ declare global {
   }
 }
 
-const DEFAULT_CLOUD_MODEL = 'gemini-3.8-flash';
+const DEFAULT_CLOUD_MODEL = 'gemini-2.5-flash-lite';
 
-export function getDefaultFirebaseConfigFromEnv(): FirebaseRuntimeConfig | null {
+export const DEFAULT_FIREBASE_CONFIG: FirebaseRuntimeConfig = {
+  apiKey: 'AIzaSyAOWVbdOVTbbZgFCO-UtVqA9i38lZLjCW8',
+  authDomain: 'veilvault-eee59.firebaseapp.com',
+  projectId: 'veilvault-eee59',
+  storageBucket: 'veilvault-eee59.firebasestorage.app',
+  messagingSenderId: '1028423976304',
+  appId: '1:1028423976304:web:4b07c380b1d223e9457bb5',
+  measurementId: 'G-MFMWKFCSDW',
+};
+
+const initializedAppCheckApps = new Set<string>();
+const initializedAnalyticsApps = new Set<string>();
+
+export function getDefaultFirebaseConfigFromEnv(): FirebaseRuntimeConfig {
   const apiKey = import.meta.env.VITE_FIREBASE_API_KEY as string | undefined;
   const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined;
   const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined;
   const appId = import.meta.env.VITE_FIREBASE_APP_ID as string | undefined;
+  const recaptchaSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_RECAPTCHA_SITE_KEY as string | undefined;
 
   if (apiKey && projectId && appId) {
     return {
@@ -50,9 +66,10 @@ export function getDefaultFirebaseConfigFromEnv(): FirebaseRuntimeConfig | null 
       authDomain: authDomain || `${projectId}.firebaseapp.com`,
       projectId,
       appId,
+      recaptchaSiteKey,
     };
   }
-  return null;
+  return DEFAULT_FIREBASE_CONFIG;
 }
 
 export function isValidFirebaseConfig(config: FirebaseRuntimeConfig | null): config is FirebaseRuntimeConfig {
@@ -63,11 +80,31 @@ function getOrCreateFirebaseAI(config: FirebaseRuntimeConfig): AI {
   const appName = `veilvault-${config.projectId}`;
   const existing = getApps().find((a) => a.name === appName);
   const app: FirebaseApp = existing ? getApp(appName) : initializeApp(config, appName);
+
+  if (typeof window !== 'undefined' && config.recaptchaSiteKey?.trim() && !initializedAppCheckApps.has(appName)) {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(config.recaptchaSiteKey.trim()),
+      isTokenAutoRefreshEnabled: true,
+    });
+    initializedAppCheckApps.add(appName);
+  }
+
+  if (typeof window !== 'undefined' && config.measurementId && !initializedAnalyticsApps.has(appName)) {
+    initializedAnalyticsApps.add(appName);
+    void isAnalyticsSupported().then((supported) => {
+      if (supported) {
+        getAnalytics(app);
+      }
+    });
+  }
+
   return getAI(app, { backend: new GoogleAIBackend() });
 }
 
 export async function resetFirebaseInstance(projectId: string): Promise<void> {
   const appName = `veilvault-${projectId}`;
+  initializedAppCheckApps.delete(appName);
+  initializedAnalyticsApps.delete(appName);
   const existing = getApps().find((a) => a.name === appName);
   if (existing) {
     await deleteApp(existing);

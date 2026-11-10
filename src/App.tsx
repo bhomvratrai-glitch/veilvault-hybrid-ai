@@ -55,16 +55,15 @@ function renderHighlightedSanitizedText(text: string): React.ReactNode[] {
 const STORAGE_CONFIG_KEY = 'veilvault_firebase_runtime_config';
 
 function loadSavedFirebaseConfig(): FirebaseRuntimeConfig | null {
-  const envConfig = getDefaultFirebaseConfigFromEnv();
-  if (envConfig) {
-    return envConfig;
-  }
   try {
     const raw = sessionStorage.getItem(STORAGE_CONFIG_KEY);
-    return raw ? (JSON.parse(raw) as FirebaseRuntimeConfig) : null;
+    if (raw) {
+      return JSON.parse(raw) as FirebaseRuntimeConfig;
+    }
   } catch {
-    return null;
+    // Ignore storage read errors
   }
+  return getDefaultFirebaseConfigFromEnv();
 }
 
 export default function App() {
@@ -624,6 +623,24 @@ export default function App() {
                   ))}
                 </tbody>
               </table>
+
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {report.provenance.map((step) => (
+                  <div
+                    key={`${step.stage}-note`}
+                    style={{
+                      fontSize: '0.74rem',
+                      color: 'var(--text-secondary)',
+                      background: 'var(--bg-canvas)',
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-subtle)',
+                    }}
+                  >
+                    <strong>{step.stage}:</strong> {step.notes}
+                  </div>
+                ))}
+              </div>
             </>
           )}
         </section>
@@ -683,6 +700,15 @@ export default function App() {
                 placeholder="1:123456789:web:abcdef..."
               />
             </div>
+            <div className="field-group">
+              <label className="field-label">Firebase App Check reCAPTCHA v3 Site Key (Optional)</label>
+              <input
+                className="field-input"
+                value={draftConfig.recaptchaSiteKey ?? ''}
+                onChange={(e) => setDraftConfig({ ...draftConfig, recaptchaSiteKey: e.target.value })}
+                placeholder="6Lc... (from Firebase Console -> App Check)"
+              />
+            </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
               <button type="button" className="btn" onClick={() => setShowConfigModal(false)}>
                 Cancel
@@ -697,3 +723,4 @@ export default function App() {
     </div>
   );
 }
+
