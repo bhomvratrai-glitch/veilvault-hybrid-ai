@@ -9,7 +9,10 @@ export type SensitivityType =
   | 'GOV_ID'
   | 'MEDICAL_MRN'
   | 'PERSON_NAME'
-  | 'ADDRESS';
+  | 'ADDRESS'
+  | 'API_SECRET'
+  | 'IP_ADDRESS'
+  | 'CRYPTO_WALLET';
 
 export interface RedactionToken {
   token: string;
@@ -19,6 +22,15 @@ export interface RedactionToken {
   confidence: number;
 }
 
+export interface CryptographicVaultProof {
+  sha256PayloadHash: string;
+  sha256VaultHash: string;
+  keyAlgorithm: string;
+  encryptedTokenCount: number;
+  generatedAt: string;
+  zeroLeakVerified: boolean;
+}
+
 export interface SanitizationResult {
   originalText: string;
   redactedText: string;
@@ -26,6 +38,7 @@ export interface SanitizationResult {
   piiBytesRemoved: number;
   zeroLeakVerified: boolean;
   redactionLatencyMs: number;
+  vaultProof?: CryptographicVaultProof;
 }
 
 export type AuditSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -49,6 +62,15 @@ export interface ProvenanceStep {
   notes: string;
 }
 
+export interface ComplianceFrameworkScore {
+  frameworkName: string;
+  standardRef: string;
+  status: 'CERTIFIED_COMPLIANT' | 'REQUIRES_REMEDIATION';
+  score: number;
+  criteriaChecked: string[];
+  findingsSummary: string;
+}
+
 export interface AuditReport {
   documentTitle: string;
   complianceFramework: string;
@@ -59,6 +81,8 @@ export interface AuditReport {
   sanitizedPayloadSent: string;
   rehydratedSummary: string;
   liveFirebaseExecution: boolean;
+  vaultProof?: CryptographicVaultProof;
+  complianceScores?: ComplianceFrameworkScore[];
 }
 
 export type OnDeviceStatus = 'available' | 'downloading' | 'downloadable' | 'unavailable';
@@ -91,4 +115,3 @@ export interface FirebaseRuntimeConfig {
   measurementId?: string;
   recaptchaSiteKey?: string;
 }
-

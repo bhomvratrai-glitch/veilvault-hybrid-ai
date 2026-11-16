@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { SAMPLE_DOCUMENTS } from '../src/data/sampleDocuments';
-import { rehydrateTokens, tokenizeAndRedact, verifyZeroPIILeakage } from '../src/engine/piiFirewall';
+import {
+  evaluateComplianceMatrix,
+  rehydrateTokens,
+  tokenizeAndRedact,
+  verifyZeroPIILeakage,
+} from '../src/engine/piiFirewall';
 
 describe('VeilVault Edge PII Firewall', () => {
   it('redacts SSN, Credit Card, MRN, Email, Phone, and contextual Name/Address with zero leaks', () => {
@@ -55,5 +60,29 @@ describe('VeilVault Edge PII Firewall', () => {
 
     expect(verifyZeroPIILeakage('Redacted payload [SSN_1]', tokens)).toBe(true);
     expect(verifyZeroPIILeakage('Leaked payload 123-45-6789', tokens)).toBe(false);
+  });
+
+  it('redacts cloud credentials, AWS keys, GitHub PATs, and generates cryptographic vault proof', () => {
+    const devopsDoc = SAMPLE_DOCUMENTS[3].content;
+    const result = tokenizeAndRedact(devopsDoc);
+
+    expect(result.zeroLeakVerified).toBe(true);
+    expect(result.redactedText).not.toContain('AKIAIOSFODNN7EXAMPLE');
+    expect(result.redactedText).not.toContain('ghp_EXAMPLE_DEMO_CREDENTIAL_9999');
+    expect(result.redactedText).not.toContain('sk_test_DEMO_STRIPE_KEY_SAMPLE_1234');
+    expect(result.vaultProof).toBeDefined();
+    expect(result.vaultProof?.sha256PayloadHash).toContain('sha256_');
+    expect(result.vaultProof?.sha256VaultHash).toContain('sha256_');
+    expect(result.vaultProof?.keyAlgorithm).toContain('AES-256-GCM');
+  });
+
+  it('evaluates compliance matrix across HIPAA, GDPR, SOC-2, and PCI-DSS', () => {
+    const sample = SAMPLE_DOCUMENTS[0].content;
+    const result = tokenizeAndRedact(sample);
+    const matrix = evaluateComplianceMatrix(result.tokens, result.zeroLeakVerified);
+
+    expect(matrix).toHaveLength(4);
+    expect(matrix.every((m) => m.status === 'CERTIFIED_COMPLIANT')).toBe(true);
+    expect(matrix.find((m) => m.frameworkName.includes('HIPAA'))?.score).toBe(100);
   });
 });
